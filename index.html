@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KanaQuiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- SETUP SCREEN -->
+  <div id="setup-screen" class="screen active">
+    <div class="setup-card">
+      <div class="logo-mark">あ</div>
+      <h1>Kana Quiz</h1>
+      <p class="subtitle">
+        Master the Japanese syllabary, one character at a time.
+      </p>
+
+      <div class="options-grid">
+        <label class="option-label">Quiz mode</label>
+        <div class="toggle-group" id="mode-group">
+          <button class="toggle-btn active" data-value="hiragana">Hiragana</button>
+          <button class="toggle-btn" data-value="sentences">Sentences</button>
+        </div>
+
+        <label class="option-label" id="order-label">Order</label>
+        <div class="toggle-group" id="order-group">
+          <button class="toggle-btn" data-value="sequential">Sequential</button>
+          <button class="toggle-btn active" data-value="random">Random</button>
+        </div>
+
+        <label class="option-label" id="set-label">Character set</label>
+        <div class="toggle-group wrap" id="set-group">
+          <button class="toggle-btn active" data-value="basic">Basic (a-n)</button>
+          <button class="toggle-btn" data-value="dakuten">Dakuten</button>
+          <button class="toggle-btn" data-value="combo">Combos</button>
+          <button class="toggle-btn" data-value="all">All</button>
+        </div>
+
+        <label class="option-label hidden" id="level-label">Level</label>
+        <div class="toggle-group wrap hidden" id="level-group">
+          <button class="toggle-btn active" data-value="all">All</button>
+          <button class="toggle-btn" data-value="beginner">Beginner</button>
+          <button class="toggle-btn" data-value="intermediate">Intermediate</button>
+          <button class="toggle-btn" data-value="advanced">Advanced</button>
+        </div>
+
+        <label class="option-label hidden" id="question-count-label">
+          Questions
+        </label>
+        <div class="toggle-group wrap hidden" id="question-count-group">
+          <button class="toggle-btn active" data-value="all">All</button>
+          <button class="toggle-btn" data-value="10">10</button>
+          <button class="toggle-btn" data-value="20">20</button>
+          <button class="toggle-btn" data-value="30">30</button>
+        </div>
+      </div>
+
+      <button id="start-btn" class="primary-btn">Begin Quiz</button>
+    </div>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div id="quiz-screen" class="screen">
+    <header class="quiz-header">
+      <button id="exit-btn" class="ghost-btn">Back</button>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
+        <span id="progress-label">0 / 0</span>
+      </div>
+      <div class="score-badge"><span id="score-count">0</span> ✓</div>
+    </header>
+
+    <main class="quiz-main">
+      <div id="kana-card" class="kana-card">
+        <div id="kana-char" class="kana-char"></div>
+        <div id="kana-hint" class="kana-hint hidden"></div>
+      </div>
+
+      <div class="input-area">
+        <input
+          type="text"
+          id="answer-input"
+          class="answer-input"
+          placeholder="Type romaji…"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+        <button id="submit-btn" class="primary-btn submit-btn">Check</button>
+      </div>
+
+      <div id="feedback" class="feedback hidden">
+        <div id="feedback-text"></div>
+        <div id="translation-reveal" class="translation-reveal hidden"></div>
+        <button id="next-btn" class="primary-btn next-btn">Next →</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- RESULTS SCREEN -->
+  <div id="results-screen" class="screen">
+    <div class="results-card">
+      <div id="results-emoji" class="results-emoji">🎌</div>
+      <h2 id="results-title">Quiz Complete!</h2>
+      <div class="results-score">
+        <span id="final-score">0</span>/<span id="final-total">0</span>
+      </div>
+      <p id="results-message" class="results-message"></p>
+      <div id="missed-list" class="missed-list hidden">
+        <h3>Review these:</h3>
+        <div id="missed-items"></div>
+      </div>
+      <button id="retry-btn" class="primary-btn">Try Again</button>
+      <button id="home-btn" class="ghost-btn home-btn">Change settings</button>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="quiz.js"></script>
+</body>
+</html>
