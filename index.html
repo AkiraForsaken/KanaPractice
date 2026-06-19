@@ -10,17 +10,16 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
   <!-- SETUP SCREEN -->
   <div id="setup-screen" class="screen active">
     <div class="setup-card">
       <div class="logo-mark">あ</div>
       <h1>Kana Quiz</h1>
-      <p class="subtitle">
-        Master the Japanese syllabary, one character at a time.
-      </p>
+      <p class="subtitle">Master the Japanese syllabary, one character at a time.</p>
 
       <div class="options-grid">
-        <label class="option-label">Quiz mode</label>
+        <label class="option-label">Mode</label>
         <div class="toggle-group" id="mode-group">
           <button class="toggle-btn active" data-value="hiragana">Hiragana</button>
           <button class="toggle-btn" data-value="sentences">Sentences</button>
@@ -32,9 +31,9 @@
           <button class="toggle-btn active" data-value="random">Random</button>
         </div>
 
-        <label class="option-label" id="set-label">Character set</label>
+        <label class="option-label" id="set-label">Set</label>
         <div class="toggle-group wrap" id="set-group">
-          <button class="toggle-btn active" data-value="basic">Basic (a-n)</button>
+          <button class="toggle-btn active" data-value="basic">Basic (a–n)</button>
           <button class="toggle-btn" data-value="dakuten">Dakuten</button>
           <button class="toggle-btn" data-value="combo">Combos</button>
           <button class="toggle-btn" data-value="all">All</button>
@@ -48,14 +47,10 @@
           <button class="toggle-btn" data-value="advanced">Advanced</button>
         </div>
 
-        <label class="option-label hidden" id="question-count-label">
-          Questions
-        </label>
-        <div class="toggle-group wrap hidden" id="question-count-group">
-          <button class="toggle-btn active" data-value="all">All</button>
-          <button class="toggle-btn" data-value="10">10</button>
-          <button class="toggle-btn" data-value="20">20</button>
-          <button class="toggle-btn" data-value="30">30</button>
+        <label class="option-label" id="question-count-label">Questions</label>
+        <div class="slider-wrap" id="question-count-wrap">
+          <input type="range" id="count-slider" class="count-slider" min="5" max="46" value="46" />
+          <span class="count-label" id="count-label">All (46)</span>
         </div>
       </div>
 
@@ -71,7 +66,10 @@
         <div class="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
         <span id="progress-label">0 / 0</span>
       </div>
-      <div class="score-badge"><span id="score-count">0</span> ✓</div>
+      <div class="quiz-meta">
+        <div class="score-badge"><span id="score-count">0</span> ✓</div>
+        <div class="timer-badge">⏱ <span id="live-timer">0s</span></div>
+      </div>
     </header>
 
     <main class="quiz-main">
@@ -107,14 +105,23 @@
     <div class="results-card">
       <div id="results-emoji" class="results-emoji">🎌</div>
       <h2 id="results-title">Quiz Complete!</h2>
+
       <div class="results-score">
         <span id="final-score">0</span>/<span id="final-total">0</span>
       </div>
+
+      <div class="results-time">
+        <span class="time-value" id="final-time">—</span>
+        <span class="time-avg" id="final-avg"></span>
+      </div>
+
       <p id="results-message" class="results-message"></p>
+
       <div id="missed-list" class="missed-list hidden">
         <h3>Review these:</h3>
         <div id="missed-items"></div>
       </div>
+
       <button id="retry-btn" class="primary-btn">Try Again</button>
       <button id="home-btn" class="ghost-btn home-btn">Change settings</button>
     </div>

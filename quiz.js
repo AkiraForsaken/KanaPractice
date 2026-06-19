@@ -1,16 +1,19 @@
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const state = {
-  mode:       'hiragana', // 'hiragana' | 'sentences'
-  order:      'random',   // 'random' | 'sequential'
-  set:        'basic',    // 'basic' | 'dakuten' | 'combo' | 'all'
-  level:      'all',
-  questionCount:'all',
-  queue:      [],         // items remaining in this round
-  current:    null,       // active item
-  score:      0,
-  total:      0,
-  missed:     [],         // items answered wrongly
-  answered:   false,      // has user submitted for this card?
+  mode:          'hiragana', // 'hiragana' | 'sentences'
+  order:         'random',   // 'random' | 'sequential'
+  set:           'basic',    // 'basic' | 'dakuten' | 'combo' | 'all'
+  level:         'all',
+  questionCount: 'all',
+  queue:         [],
+  current:       null,
+  score:         0,
+  total:         0,
+  missed:        [],
+  answered:      false,
+  timerStart:    null,
+  timerEnd:      null,
+  timerInterval: null,
 };
 
 // ── DOM REFS ──────────────────────────────────────────────────────────────────
@@ -33,20 +36,17 @@ function shuffle(arr) {
 }
 
 function normalize(str) {
-  // Accept common romaji variants
   return str.trim().toLowerCase()
     .replace(/\s+/g, ' ')
-    .replace(/ō/g, 'o')   // macron o
-    .replace(/ū/g, 'u');  // macron u
+    .replace(/ō/g, 'o')
+    .replace(/ū/g, 'u');
 }
 
-// Check if two romaji answers match, with alias support
 function romajiMatch(input, answer) {
   const inp = normalize(input);
   const ans = normalize(answer);
   if (inp === ans) return true;
 
-  // Common accepted aliases
   const aliases = {
     'shi': ['si'],
     'chi': ['ti'],
@@ -55,7 +55,6 @@ function romajiMatch(input, answer) {
     'ji':  ['zi', 'di'],
     'zu':  ['du'],
     'sha': ['sya'],
-    'shi': ['si'],
     'shu': ['syu'],
     'sho': ['syo'],
     'cha': ['tya'],
@@ -71,35 +70,69 @@ function romajiMatch(input, answer) {
   return accepted.includes(inp);
 }
 
+function formatTime(ms) {
+  if (ms == null) return '—';
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────────────
+function startTimer() {
+  state.timerStart = Date.now();
+  state.timerEnd   = null;
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    const elapsed = Date.now() - state.timerStart;
+    $('live-timer').textContent = formatTime(elapsed);
+  }, 1000);
+}
+
+function stopTimer() {
+  state.timerEnd = Date.now();
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+}
+
 // ── SCREEN MANAGEMENT ─────────────────────────────────────────────────────────
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
 }
 
-// ── SETUP SCREEN ──────────────────────────────────────────────────────────────
-function updateAvailableSentenceCounts() {
-  let available = SENTENCES;
-
-  if (state.level !== 'all') {
-    available = available.filter(
-      s => s.level === state.level
-    );
+// ── SLIDER LOGIC ─────────────────────────────────────────────────────────────
+function getMaxQuestions() {
+  if (state.mode === 'sentences') {
+    let items = [...SENTENCES];
+    if (state.level !== 'all') items = items.filter(s => s.level === state.level);
+    return items.length;
+  } else {
+    return (HIRAGANA[state.set] || HIRAGANA.basic).length;
   }
-
-  const total = available.length;
-
-  document.querySelectorAll('#question-count-group .toggle-btn')
-    .forEach(btn => {
-
-      if (btn.dataset.value === 'all') return;
-
-      const count = Number(btn.dataset.value);
-
-      if (count > total) btn.classList.add('disabled');
-      // btn.disabled = count > total;
-    });
 }
+
+function updateSlider() {
+  const slider   = $('count-slider');
+  const label    = $('count-label');
+  const maxQ     = getMaxQuestions();
+
+  slider.min   = 5;
+  slider.max   = maxQ;
+
+  // Clamp current value
+  let cur = state.questionCount === 'all' ? maxQ : Number(state.questionCount);
+  cur = Math.min(Math.max(cur, 5), maxQ);
+
+  slider.value = cur;
+  state.questionCount = cur >= maxQ ? 'all' : String(cur);
+  label.textContent   = cur >= maxQ ? `All (${maxQ})` : cur;
+}
+
+// ── SETUP VISIBILITY ─────────────────────────────────────────────────────────
 function updateSetupVisibility() {
   const sentenceMode = state.mode === 'sentences';
 
@@ -112,44 +145,34 @@ function updateSetupVisibility() {
   $('level-label').classList.toggle('hidden', !sentenceMode);
   $('level-group').classList.toggle('hidden', !sentenceMode);
 
-  $('question-count-label').classList.toggle('hidden', !sentenceMode);
-  $('question-count-group').classList.toggle('hidden', !sentenceMode);
+  $('question-count-label').classList.toggle('hidden', false);
+  $('question-count-wrap').classList.toggle('hidden', false);
+
+  updateSlider();
 }
+
+// ── SETUP LISTENERS ───────────────────────────────────────────────────────────
 function initSetupListeners() {
-  // Toggle groups
   document.querySelectorAll('.toggle-group').forEach(group => {
     group.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const rawKey = group.id.replace('-group', '');
-        const key = rawKey == 'question-count' ? "questionCount" : rawKey;
-        state[key] = btn.dataset.value;
+        const key    = rawKey === 'question-count' ? 'questionCount' : rawKey;
+        state[key]   = btn.dataset.value;
 
-        // Show/hide character set selector based on mode
-        const setLabel = $('set-label');
-        const setGroup = $('set-group');
-        const orderLabel = $('order-label');
-        const orderGroup = $('order-group')
-        // if (state.mode === 'sentences') {
-        //   setLabel.style.opacity = '0.3';
-        //   setGroup.style.opacity = '0.3';
-        //   setGroup.style.pointerEvents = 'none';
-        //   orderLabel.style.opacity = '0.3';
-        //   orderGroup.style.opacity = '0.3';
-        //   orderGroup.style.pointerEvents = 'none';
-        // } else {
-        //   setLabel.style.opacity = '';
-        //   setGroup.style.opacity = '';
-        //   setGroup.style.pointerEvents = '';
-        //   orderLabel.style.opacity = '';
-        //   orderGroup.style.opacity = '';
-        //   orderGroup.style.pointerEvents = '';
-        // }
         updateSetupVisibility();
-        updateAvailableSentenceCounts();
       });
     });
+  });
+
+  // Slider
+  $('count-slider').addEventListener('input', e => {
+    const maxQ = getMaxQuestions();
+    const val  = Number(e.target.value);
+    state.questionCount = val >= maxQ ? 'all' : String(val);
+    $('count-label').textContent = val >= maxQ ? `All (${maxQ})` : val;
   });
 
   $('start-btn').addEventListener('click', startQuiz);
@@ -157,43 +180,26 @@ function initSetupListeners() {
 
 // ── QUIZ START ────────────────────────────────────────────────────────────────
 function startQuiz() {
-  // Build queue
   let items;
   if (state.mode === 'sentences') {
     items = [...SENTENCES];
-    if (state.level !== 'all') {
-      items = items.filter(
-        sentence => sentence.level === state.level
-      );
-    }
-
-    if (state.order === 'random') {
-      items = shuffle(items);
-    }
-
-    if (state.questionCount !== 'all') {
-      items = items.slice(
-        0,
-        Number(state.questionCount)
-      );
-    }
-
+    if (state.level !== 'all') items = items.filter(s => s.level === state.level);
+    items = shuffle(items);
+    if (state.questionCount !== 'all') items = items.slice(0, Number(state.questionCount));
   } else {
-
     items = [...(HIRAGANA[state.set] || HIRAGANA.basic)];
-
-    if (state.order === 'random') {
-      items = shuffle(items);
-    }
+    if (state.order === 'random') items = shuffle(items);
+    if (state.questionCount !== 'all') items = items.slice(0, Number(state.questionCount));
   }
 
-  state.queue = items;
-  state.total   = state.queue.length;
-  state.score   = 0;
-  state.missed  = [];
+  state.queue    = items;
+  state.total    = items.length;
+  state.score    = 0;
+  state.missed   = [];
   state.answered = false;
 
   showScreen('quiz');
+  startTimer();
   updateHeader();
   nextCard();
 }
@@ -209,30 +215,25 @@ function updateHeader() {
 
 // ── NEXT CARD ─────────────────────────────────────────────────────────────────
 function nextCard() {
-  if (state.queue.length === 0) {
-    showResults();
-    return;
-  }
+  if (state.queue.length === 0) { showResults(); return; }
 
   state.current  = state.queue.shift();
   state.answered = false;
 
-  // Reset UI
-  const charEl    = $('kana-char');
-  const hintEl    = $('kana-hint');
-  const input     = $('answer-input');
-  const feedback  = $('feedback');
+  const charEl   = $('kana-char');
+  const hintEl   = $('kana-hint');
+  const input    = $('answer-input');
+  const feedback = $('feedback');
 
-  // Trigger re-animation by removing and re-adding the element
   charEl.style.animation = 'none';
-  charEl.offsetHeight; // reflow
+  charEl.offsetHeight;
   charEl.style.animation = '';
 
   charEl.textContent = state.current.char || state.current.text;
   hintEl.textContent = state.current.hint || '';
   hintEl.classList.toggle('hidden', !state.current.hint);
 
-  input.value = '';
+  input.value     = '';
   input.className = 'answer-input';
   input.disabled  = false;
   input.focus();
@@ -256,13 +257,12 @@ function submitAnswer() {
   const correct = state.current.reading || state.current.romaji;
   const isRight = romajiMatch(rawInput, correct);
 
-  state.answered = true;
-  input.disabled = true;
+  state.answered   = true;
+  input.disabled   = true;
   $('submit-btn').disabled = true;
 
   const feedback     = $('feedback');
   const feedbackText = $('feedback-text');
-
   feedback.classList.remove('hidden');
 
   if (isRight) {
@@ -277,7 +277,6 @@ function submitAnswer() {
     feedbackText.className   = 'wrong-msg';
   }
 
-  // Show translation for sentences
   if (state.mode === 'sentences' && state.current.translation) {
     const revealEl = $('translation-reveal');
     revealEl.classList.remove('hidden');
@@ -290,24 +289,31 @@ function submitAnswer() {
 
 // ── RESULTS ───────────────────────────────────────────────────────────────────
 function showResults() {
-  const score = state.score;
-  const total = state.total;
-  const pct   = total > 0 ? score / total : 0;
+  stopTimer();
 
-  $('final-score').textContent = score;
-  $('final-total').textContent = total;
+  const score   = state.score;
+  const total   = state.total;
+  const pct     = total > 0 ? score / total : 0;
+  const elapsed = state.timerEnd - state.timerStart;
+
+  $('final-score').textContent   = score;
+  $('final-total').textContent   = total;
+  $('final-time').textContent    = formatTime(elapsed);
+
+  // Per-question average
+  const avg = total > 0 ? Math.round(elapsed / total / 1000) : 0;
+  $('final-avg').textContent = avg > 0 ? `~${avg}s per question` : '';
 
   let emoji, title, message;
-  if (pct === 1)       { emoji = '🏆'; title = 'Perfect!';       message = 'Flawless round. You know your hiragana!'; }
-  else if (pct >= 0.8) { emoji = '🎉'; title = 'Great job!';     message = 'Almost there — review the ones you missed.'; }
-  else if (pct >= 0.5) { emoji = '📖'; title = 'Keep going!';    message = 'Good effort. Practice makes perfect.'; }
-  else                 { emoji = '🌱'; title = 'Keep studying!';  message = 'Don\'t give up — repetition is the key to mastery.'; }
+  if (pct === 1)       { emoji = '🏆'; title = 'Perfect!';      message = 'Flawless round. You know your kana!'; }
+  else if (pct >= 0.8) { emoji = '🎉'; title = 'Great job!';    message = 'Almost there — review the ones you missed.'; }
+  else if (pct >= 0.5) { emoji = '📖'; title = 'Keep going!';   message = 'Good effort. Practice makes perfect.'; }
+  else                 { emoji = '🌱'; title = 'Keep studying!'; message = "Don't give up — repetition is the key to mastery."; }
 
-  $('results-emoji').textContent  = emoji;
-  $('results-title').textContent  = title;
+  $('results-emoji').textContent   = emoji;
+  $('results-title').textContent   = title;
   $('results-message').textContent = message;
 
-  // Missed characters review
   const missedList  = $('missed-list');
   const missedItems = $('missed-items');
   missedItems.innerHTML = '';
@@ -315,7 +321,7 @@ function showResults() {
   if (state.missed.length > 0) {
     missedList.classList.remove('hidden');
     state.missed.forEach(item => {
-      const pill = document.createElement('div');
+      const pill    = document.createElement('div');
       pill.className = 'missed-pill';
       const char    = item.char || item.text;
       const reading = item.reading || item.romaji;
@@ -329,11 +335,14 @@ function showResults() {
   showScreen('results');
 }
 
-// ── EVENT LISTENERS ───────────────────────────────────────────────────────────
+// ── QUIZ LISTENERS ────────────────────────────────────────────────────────────
 function initQuizListeners() {
   $('submit-btn').addEventListener('click', submitAnswer);
   $('next-btn').addEventListener('click', nextCard);
-  $('exit-btn').addEventListener('click', () => showScreen('setup'));
+  $('exit-btn').addEventListener('click', () => {
+    stopTimer();
+    showScreen('setup');
+  });
   $('retry-btn').addEventListener('click', startQuiz);
   $('home-btn').addEventListener('click', () => showScreen('setup'));
 
