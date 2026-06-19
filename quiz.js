@@ -1,11 +1,12 @@
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const state = {
   mode:          'hiragana', // 'hiragana' | 'sentences'
-  order:         'random',   // 'random' | 'sequential'
-  set:           'basic',    // 'basic' | 'dakuten' | 'combo' | 'all'
+  order:         'random',
+  set:           'basic',
   level:         'all',
   questionCount: 'all',
   queue:         [],
+  allSentences:  [],   // full level-filtered pool, used for MCQ distractors
   current:       null,
   score:         0,
   total:         0,
@@ -46,37 +47,22 @@ function romajiMatch(input, answer) {
   const inp = normalize(input);
   const ans = normalize(answer);
   if (inp === ans) return true;
-
   const aliases = {
-    'shi': ['si'],
-    'chi': ['ti'],
-    'tsu': ['tu'],
-    'fu':  ['hu'],
-    'ji':  ['zi', 'di'],
-    'zu':  ['du'],
-    'sha': ['sya'],
-    'shu': ['syu'],
-    'sho': ['syo'],
-    'cha': ['tya'],
-    'chu': ['tyu'],
-    'cho': ['tyo'],
-    'ja':  ['jya', 'zya'],
-    'ju':  ['jyu', 'zyu'],
-    'jo':  ['jyo', 'zyo'],
+    'shi': ['si'], 'chi': ['ti'], 'tsu': ['tu'], 'fu': ['hu'],
+    'ji':  ['zi', 'di'], 'zu': ['du'],
+    'sha': ['sya'], 'shu': ['syu'], 'sho': ['syo'],
+    'cha': ['tya'], 'chu': ['tyu'], 'cho': ['tyo'],
+    'ja':  ['jya', 'zya'], 'ju': ['jyu', 'zyu'], 'jo': ['jyo', 'zyo'],
     'wo':  ['o'],
   };
-
-  const accepted = aliases[ans] || [];
-  return accepted.includes(inp);
+  return (aliases[ans] || []).includes(inp);
 }
 
 function formatTime(ms) {
   if (ms == null) return '—';
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes === 0) return `${seconds}s`;
-  return `${minutes}m ${seconds}s`;
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m === 0 ? `${s}s` : `${m}m ${s % 60}s`;
 }
 
 // ── TIMER ─────────────────────────────────────────────────────────────────────
@@ -85,17 +71,13 @@ function startTimer() {
   state.timerEnd   = null;
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.timerInterval = setInterval(() => {
-    const elapsed = Date.now() - state.timerStart;
-    $('live-timer').textContent = formatTime(elapsed);
+    $('live-timer').textContent = formatTime(Date.now() - state.timerStart);
   }, 1000);
 }
 
 function stopTimer() {
   state.timerEnd = Date.now();
-  if (state.timerInterval) {
-    clearInterval(state.timerInterval);
-    state.timerInterval = null;
-  }
+  if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
 }
 
 // ── SCREEN MANAGEMENT ─────────────────────────────────────────────────────────
@@ -104,50 +86,37 @@ function showScreen(name) {
   screens[name].classList.add('active');
 }
 
-// ── SLIDER LOGIC ─────────────────────────────────────────────────────────────
+// ── SLIDER LOGIC ──────────────────────────────────────────────────────────────
 function getMaxQuestions() {
   if (state.mode === 'sentences') {
     let items = [...SENTENCES];
     if (state.level !== 'all') items = items.filter(s => s.level === state.level);
     return items.length;
-  } else {
-    return (HIRAGANA[state.set] || HIRAGANA.basic).length;
   }
+  return (HIRAGANA[state.set] || HIRAGANA.basic).length;
 }
 
 function updateSlider() {
-  const slider   = $('count-slider');
-  const label    = $('count-label');
-  const maxQ     = getMaxQuestions();
-
+  const slider = $('count-slider');
+  const maxQ   = getMaxQuestions();
   slider.min   = 5;
   slider.max   = maxQ;
-
-  // Clamp current value
   let cur = state.questionCount === 'all' ? maxQ : Number(state.questionCount);
   cur = Math.min(Math.max(cur, 5), maxQ);
-
-  slider.value = cur;
+  slider.value        = cur;
   state.questionCount = cur >= maxQ ? 'all' : String(cur);
-  label.textContent   = cur >= maxQ ? `All (${maxQ})` : cur;
+  $('count-label').textContent = cur >= maxQ ? `All (${maxQ})` : cur;
 }
 
-// ── SETUP VISIBILITY ─────────────────────────────────────────────────────────
+// ── SETUP VISIBILITY ──────────────────────────────────────────────────────────
 function updateSetupVisibility() {
   const sentenceMode = state.mode === 'sentences';
-
   $('set-label').classList.toggle('disabled', sentenceMode);
   $('set-group').classList.toggle('disabled', sentenceMode);
-
   $('order-label').classList.toggle('disabled', sentenceMode);
   $('order-group').classList.toggle('disabled', sentenceMode);
-
   $('level-label').classList.toggle('hidden', !sentenceMode);
   $('level-group').classList.toggle('hidden', !sentenceMode);
-
-  $('question-count-label').classList.toggle('hidden', false);
-  $('question-count-wrap').classList.toggle('hidden', false);
-
   updateSlider();
 }
 
@@ -161,13 +130,11 @@ function initSetupListeners() {
         const rawKey = group.id.replace('-group', '');
         const key    = rawKey === 'question-count' ? 'questionCount' : rawKey;
         state[key]   = btn.dataset.value;
-
         updateSetupVisibility();
       });
     });
   });
 
-  // Slider
   $('count-slider').addEventListener('input', e => {
     const maxQ = getMaxQuestions();
     const val  = Number(e.target.value);
@@ -182,11 +149,15 @@ function initSetupListeners() {
 function startQuiz() {
   let items;
   if (state.mode === 'sentences') {
-    items = [...SENTENCES];
-    if (state.level !== 'all') items = items.filter(s => s.level === state.level);
-    items = shuffle(items);
+    // Keep the full filtered pool for distractor generation
+    let pool = [...SENTENCES];
+    if (state.level !== 'all') pool = pool.filter(s => s.level === state.level);
+    state.allSentences = pool;
+
+    items = shuffle([...pool]);
     if (state.questionCount !== 'all') items = items.slice(0, Number(state.questionCount));
   } else {
+    state.allSentences = [];
     items = [...(HIRAGANA[state.set] || HIRAGANA.basic)];
     if (state.order === 'random') items = shuffle(items);
     if (state.questionCount !== 'all') items = items.slice(0, Number(state.questionCount));
@@ -213,6 +184,17 @@ function updateHeader() {
   $('score-count').textContent = state.score;
 }
 
+// ── MCQ DISTRACTOR GENERATION ─────────────────────────────────────────────────
+function buildChoices(correctItem) {
+  // Pull 3 distractors from the pool, excluding the correct translation
+  const distractors = shuffle(
+    state.allSentences.filter(s => s.translation !== correctItem.translation)
+  ).slice(0, 3).map(s => s.translation);
+
+  // Combine and shuffle so correct answer lands in a random slot
+  return shuffle([correctItem.translation, ...distractors]);
+}
+
 // ── NEXT CARD ─────────────────────────────────────────────────────────────────
 function nextCard() {
   if (state.queue.length === 0) { showResults(); return; }
@@ -220,33 +202,97 @@ function nextCard() {
   state.current  = state.queue.shift();
   state.answered = false;
 
-  const charEl   = $('kana-char');
-  const hintEl   = $('kana-hint');
-  const input    = $('answer-input');
-  const feedback = $('feedback');
-
+  // Animate character
+  const charEl = $('kana-char');
   charEl.style.animation = 'none';
   charEl.offsetHeight;
   charEl.style.animation = '';
-
   charEl.textContent = state.current.char || state.current.text;
-  hintEl.textContent = state.current.hint || '';
-  hintEl.classList.toggle('hidden', !state.current.hint);
 
-  input.value     = '';
-  input.className = 'answer-input';
-  input.disabled  = false;
-  input.focus();
+  const hintEl = $('kana-hint');
+  if (state.mode === 'sentences') {
+    hintEl.textContent = state.current.reading || '';
+    hintEl.classList.toggle('hidden', !state.current.reading);
+  } else {
+    hintEl.textContent = state.current.hint || '';
+    hintEl.classList.toggle('hidden', !state.current.hint);
+  }
 
-  feedback.classList.add('hidden');
+  $('feedback').classList.add('hidden');
   $('feedback-text').className = '';
-  $('translation-reveal').classList.add('hidden');
-  $('submit-btn').disabled = false;
+
+  const sentenceMode = state.mode === 'sentences';
+  $('kana-card').classList.toggle('sentence-mode', sentenceMode);
+
+  // Toggle input vs MCQ
+  $('input-area').classList.toggle('hidden', sentenceMode);
+  $('mcq-area').classList.toggle('hidden', !sentenceMode);
+
+  if (sentenceMode) {
+    renderMCQ();
+  } else {
+    const input = $('answer-input');
+    input.value     = '';
+    input.className = 'answer-input';
+    input.disabled  = false;
+    $('submit-btn').disabled = false;
+    input.focus();
+  }
 
   updateHeader();
 }
 
-// ── SUBMIT ANSWER ─────────────────────────────────────────────────────────────
+// ── RENDER MCQ ────────────────────────────────────────────────────────────────
+function renderMCQ() {
+  const choices    = buildChoices(state.current);
+  const container  = $('mcq-choices');
+  container.innerHTML = '';
+
+  choices.forEach(choice => {
+    const btn = document.createElement('button');
+    btn.className   = 'choice-btn';
+    btn.textContent = choice;
+    btn.addEventListener('click', () => selectChoice(btn, choice));
+    container.appendChild(btn);
+  });
+}
+
+// ── SELECT MCQ CHOICE ─────────────────────────────────────────────────────────
+function selectChoice(btn, chosen) {
+  if (state.answered) return;
+  state.answered = true;
+
+  const correct    = state.current.translation;
+  const isRight    = chosen === correct;
+  const feedback   = $('feedback');
+  const feedbackTx = $('feedback-text');
+
+  // Mark all buttons
+  $('mcq-choices').querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correct) {
+      b.classList.add('choice-correct');
+    } else if (b === btn && !isRight) {
+      b.classList.add('choice-wrong');
+    }
+  });
+
+  if (isRight) {
+    state.score++;
+    feedbackTx.textContent = '✓ Correct!';
+    feedbackTx.className   = 'correct-msg';
+  } else {
+    state.missed.push(state.current);
+    feedbackTx.textContent = `✗ The answer was: "${correct}"`;
+    feedbackTx.className   = 'wrong-msg';
+  }
+
+  feedback.classList.remove('hidden');
+  $('next-btn').focus();
+  updateHeader();
+}
+
+// ── SUBMIT ANSWER (hiragana mode) ─────────────────────────────────────────────
 function submitAnswer() {
   if (state.answered) { nextCard(); return; }
 
@@ -257,30 +303,24 @@ function submitAnswer() {
   const correct = state.current.reading || state.current.romaji;
   const isRight = romajiMatch(rawInput, correct);
 
-  state.answered   = true;
-  input.disabled   = true;
+  state.answered = true;
+  input.disabled = true;
   $('submit-btn').disabled = true;
 
-  const feedback     = $('feedback');
-  const feedbackText = $('feedback-text');
+  const feedback   = $('feedback');
+  const feedbackTx = $('feedback-text');
   feedback.classList.remove('hidden');
 
   if (isRight) {
     state.score++;
     input.classList.add('correct');
-    feedbackText.textContent = '✓ Correct!';
-    feedbackText.className   = 'correct-msg';
+    feedbackTx.textContent = '✓ Correct!';
+    feedbackTx.className   = 'correct-msg';
   } else {
     state.missed.push(state.current);
     input.classList.add('wrong');
-    feedbackText.textContent = `✗ The answer was: ${correct}`;
-    feedbackText.className   = 'wrong-msg';
-  }
-
-  if (state.mode === 'sentences' && state.current.translation) {
-    const revealEl = $('translation-reveal');
-    revealEl.classList.remove('hidden');
-    revealEl.innerHTML = `<strong>Translation:</strong> ${state.current.translation}`;
+    feedbackTx.textContent = `✗ The answer was: ${correct}`;
+    feedbackTx.className   = 'wrong-msg';
   }
 
   $('next-btn').focus();
@@ -296,11 +336,10 @@ function showResults() {
   const pct     = total > 0 ? score / total : 0;
   const elapsed = state.timerEnd - state.timerStart;
 
-  $('final-score').textContent   = score;
-  $('final-total').textContent   = total;
-  $('final-time').textContent    = formatTime(elapsed);
+  $('final-score').textContent = score;
+  $('final-total').textContent = total;
+  $('final-time').textContent  = formatTime(elapsed);
 
-  // Per-question average
   const avg = total > 0 ? Math.round(elapsed / total / 1000) : 0;
   $('final-avg').textContent = avg > 0 ? `~${avg}s per question` : '';
 
@@ -321,11 +360,21 @@ function showResults() {
   if (state.missed.length > 0) {
     missedList.classList.remove('hidden');
     state.missed.forEach(item => {
-      const pill    = document.createElement('div');
+      const pill = document.createElement('div');
       pill.className = 'missed-pill';
-      const char    = item.char || item.text;
-      const reading = item.reading || item.romaji;
-      pill.innerHTML = `<span class="char">${char}</span><span class="rom">${reading}</span>`;
+
+      if (state.mode === 'sentences') {
+        // Show Japanese text + correct translation
+        pill.innerHTML = `
+          <span class="char">${item.text}</span>
+          <span class="rom">${item.translation}</span>
+        `;
+      } else {
+        const char    = item.char || item.text;
+        const reading = item.reading || item.romaji;
+        pill.innerHTML = `<span class="char">${char}</span><span class="rom">${reading}</span>`;
+      }
+
       missedItems.appendChild(pill);
     });
   } else {
@@ -339,10 +388,7 @@ function showResults() {
 function initQuizListeners() {
   $('submit-btn').addEventListener('click', submitAnswer);
   $('next-btn').addEventListener('click', nextCard);
-  $('exit-btn').addEventListener('click', () => {
-    stopTimer();
-    showScreen('setup');
-  });
+  $('exit-btn').addEventListener('click', () => { stopTimer(); showScreen('setup'); });
   $('retry-btn').addEventListener('click', startQuiz);
   $('home-btn').addEventListener('click', () => showScreen('setup'));
 

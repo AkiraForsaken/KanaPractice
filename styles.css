@@ -350,6 +350,16 @@ h1 {
   font-style: italic;
 }
 
+.kana-card.sentence-mode .kana-hint {
+  font-family: var(--font-ui);
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink);
+  opacity: 0.5;
+  letter-spacing: 0.3px;
+}
+
 /* ── INPUT AREA ──────────────────────────────────────────────────────────────── */
 .input-area {
   display: flex;
@@ -426,6 +436,64 @@ h1 {
 .translation-reveal.hidden { display: none; }
 
 .next-btn { align-self: stretch; }
+
+/* ── MULTIPLE CHOICE ─────────────────────────────────────────────────────────── */
+.mcq-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+
+.mcq-prompt {
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  font-weight: 600;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  text-align: center;
+}
+
+.mcq-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(8px, 2vw, 12px);
+}
+
+.choice-btn {
+  font-family: var(--font-ui);
+  font-size: clamp(0.82rem, 2vw, 0.95rem);
+  font-weight: 500;
+  line-height: 1.4;
+  padding: clamp(0.75rem, 2vw, 1rem) clamp(0.75rem, 2vw, 1.1rem);
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: white;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  min-height: clamp(56px, 10vw, 72px);
+}
+.choice-btn:hover:not(:disabled) {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.1);
+  transform: translateY(-1px);
+}
+.choice-btn:disabled {
+  cursor: default;
+}
+.choice-btn.choice-correct {
+  border-color: var(--green);
+  background: rgba(74,124,89,0.2);
+  color: #a8d5b0;
+}
+.choice-btn.choice-wrong {
+  border-color: var(--red);
+  background: rgba(192,57,43,0.18);
+  color: #e07b72;
+  animation: shake 0.3s ease;
+}
 
 /* ── RESULTS ─────────────────────────────────────────────────────────────────── */
 .results-card {
@@ -512,28 +580,17 @@ h2 {
   padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 12px);
   font-size: clamp(12px, 2vw, 14px);
   display: flex;
-  align-items: center;
-  gap: clamp(4px, 1vw, 6px);
+  align-items: baseline;
+  gap: clamp(4px, 1vw, 8px);
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  flex-wrap: wrap;
 }
-.missed-pill .char { 
-  font-family: var(--font-kana); 
-  font-size: clamp(15px, 3.5vw, 18px); 
-}
-.missed-pill .rom  { 
-  color: var(--ink-muted); 
-  font-size: clamp(10px, 1.8vw, 12px); 
-  font-weight: 500; 
-}
+.missed-pill .char { font-family: var(--font-kana); font-size: clamp(15px, 3.5vw, 18px); }
+.missed-pill .rom  { color: var(--ink-muted); font-size: clamp(10px, 1.8vw, 12px); font-weight: 500; }
 
 .home-btn {
   background: transparent;
   border-color: rgba(0,0,0,0.15);
   color: var(--ink-muted);
 }
-.home-btn:hover { 
-  border-color: rgba(0,0,0,0.3); 
-  color: var(--ink); 
-  box-shadow: none; 
-  transform: none; 
-}
+.home-btn:hover { border-color: rgba(0,0,0,0.3); color: var(--ink); box-shadow: none; transform: none; }

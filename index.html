@@ -33,7 +33,7 @@
 
         <label class="option-label" id="set-label">Set</label>
         <div class="toggle-group wrap" id="set-group">
-          <button class="toggle-btn active" data-value="basic">Basic (a–n)</button>
+          <button class="toggle-btn active" data-value="basic">Basic (a-n)</button>
           <button class="toggle-btn" data-value="dakuten">Dakuten</button>
           <button class="toggle-btn" data-value="combo">Combos</button>
           <button class="toggle-btn" data-value="all">All</button>
@@ -78,7 +78,8 @@
         <div id="kana-hint" class="kana-hint hidden"></div>
       </div>
 
-      <div class="input-area">
+      <!-- HIRAGANA mode: text input -->
+      <div class="input-area" id="input-area">
         <input
           type="text"
           id="answer-input"
@@ -92,9 +93,14 @@
         <button id="submit-btn" class="primary-btn submit-btn">Check</button>
       </div>
 
+      <!-- SENTENCE mode: multiple choice -->
+      <div id="mcq-area" class="mcq-area hidden">
+        <p class="mcq-prompt">What does this sentence mean?</p>
+        <div id="mcq-choices" class="mcq-choices"></div>
+      </div>
+
       <div id="feedback" class="feedback hidden">
         <div id="feedback-text"></div>
-        <div id="translation-reveal" class="translation-reveal hidden"></div>
         <button id="next-btn" class="primary-btn next-btn">Next →</button>
       </div>
     </main>
