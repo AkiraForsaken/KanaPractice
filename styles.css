@@ -312,7 +312,6 @@ h1 {
   width: 100%;
   min-height: clamp(160px, 28vw, 220px);
   padding: var(--sp-lg);
-  word-break: break-all;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -337,6 +336,24 @@ h1 {
   line-height: 1.1;
   color: var(--ink);
   animation: kana-appear 0.4s ease forwards;
+}
+
+.kana-card.sentence-mode .kana-char {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.5;
+  word-break: normal;
+  overflow-wrap: normal;
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.15em;
+}
+
+/* Each hiragana word is an unbreakable unit */
+.kana-word {
+  white-space: nowrap;
+  display: inline-block;
 }
 
 @keyframes kana-appear {

@@ -207,7 +207,41 @@ function nextCard() {
   charEl.style.animation = 'none';
   charEl.offsetHeight;
   charEl.style.animation = '';
-  charEl.textContent = state.current.char || state.current.text;
+
+  if (state.mode === 'sentences') {
+    // Split hiragana into word-sized chunks using romaji spaces as a word-count guide,
+    // then wrap each chunk in a nowrap span so the browser breaks only between words.
+    const text    = state.current.text;
+    const reading = state.current.reading || '';
+    const words   = reading.trim().split(/\s+/);
+    const wordCount = words.length;
+
+    // Segment the hiragana string into individual characters
+    const segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' });
+    const chars = [...segmenter.segment(text)].map(s => s.segment);
+    const total = chars.length;
+
+    if (wordCount <= 1 || total === 0) {
+      charEl.textContent = text;
+    } else {
+      // Distribute characters roughly evenly across words,
+      // proportional to each romaji word's length
+      const romajiLengths = words.map(w => w.length);
+      const romajiTotal   = romajiLengths.reduce((a, b) => a + b, 0);
+      let pos = 0;
+      const spans = words.map((_, wi) => {
+        const share = Math.round((romajiLengths[wi] / romajiTotal) * total);
+        // Last word gets whatever remains
+        const count = wi === wordCount - 1 ? total - pos : Math.max(1, share);
+        const chunk = chars.slice(pos, pos + count).join('');
+        pos += count;
+        return `<span class="kana-word">${chunk}</span>`;
+      });
+      charEl.innerHTML = spans.join('');
+    }
+  } else {
+    charEl.textContent = state.current.char || state.current.text;
+  }
 
   const hintEl = $('kana-hint');
   if (state.mode === 'sentences') {
