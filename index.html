@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KanaQuiz</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 
   <!-- SETUP SCREEN -->
@@ -19,26 +23,31 @@
       <p class="subtitle">Master the Japanese syllabary, one character at a time.</p>
 
       <div class="options-grid">
-        <label class="option-label">Mode</label>
-        <div class="toggle-group" id="mode-group">
-          <button class="toggle-btn active" data-value="hiragana">Hiragana</button>
+
+        <!-- Quiz type: characters vs sentences -->
+        <label class="option-label">Quiz</label>
+        <div class="toggle-group" id="quiz-group">
+          <button class="toggle-btn active" data-value="characters">Characters</button>
           <button class="toggle-btn" data-value="sentences">Sentences</button>
         </div>
 
-        <label class="option-label" id="order-label">Order</label>
-        <div class="toggle-group" id="order-group">
-          <button class="toggle-btn" data-value="sequential">Sequential</button>
-          <button class="toggle-btn active" data-value="random">Random</button>
+        <!-- Script: hiragana / katakana / both  (hidden in sentence mode) -->
+        <label class="option-label" id="script-label">Script</label>
+        <div class="toggle-group" id="script-group">
+          <button class="toggle-btn active" data-value="hiragana">Hiragana</button>
+          <button class="toggle-btn" data-value="katakana">Katakana</button>
+          <button class="toggle-btn" data-value="both">Both</button>
         </div>
 
+        <!-- Character set: multi-select (hidden in sentence mode) -->
         <label class="option-label" id="set-label">Set</label>
         <div class="toggle-group wrap" id="set-group">
-          <button class="toggle-btn active" data-value="basic">Basic (a-n)</button>
-          <button class="toggle-btn" data-value="dakuten">Dakuten</button>
-          <button class="toggle-btn" data-value="combo">Combos</button>
-          <button class="toggle-btn" data-value="all">All</button>
+          <button class="toggle-btn multi active" data-value="basic">Basic (a–n)</button>
+          <button class="toggle-btn multi" data-value="dakuten">Dakuten</button>
+          <button class="toggle-btn multi" data-value="combo">Combos</button>
         </div>
 
+        <!-- Difficulty level (shown only in sentence mode) -->
         <label class="option-label hidden" id="level-label">Level</label>
         <div class="toggle-group wrap hidden" id="level-group">
           <button class="toggle-btn active" data-value="all">All</button>
@@ -47,11 +56,13 @@
           <button class="toggle-btn" data-value="advanced">Advanced</button>
         </div>
 
+        <!-- Question count slider -->
         <label class="option-label" id="question-count-label">Questions</label>
         <div class="slider-wrap" id="question-count-wrap">
           <input type="range" id="count-slider" class="count-slider" min="5" max="46" value="46" />
           <span class="count-label" id="count-label">All (46)</span>
         </div>
+
       </div>
 
       <button id="start-btn" class="primary-btn">Begin Quiz</button>
@@ -63,7 +74,9 @@
     <header class="quiz-header">
       <button id="exit-btn" class="ghost-btn">Back</button>
       <div class="progress-wrap">
-        <div class="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
+        <div class="progress-bar">
+          <div id="progress-fill" style="width:0%"></div>
+        </div>
         <span id="progress-label">0 / 0</span>
       </div>
       <div class="quiz-meta">
@@ -78,22 +91,14 @@
         <div id="kana-hint" class="kana-hint hidden"></div>
       </div>
 
-      <!-- HIRAGANA mode: text input -->
+      <!-- Character mode: text input -->
       <div class="input-area" id="input-area">
-        <input
-          type="text"
-          id="answer-input"
-          class="answer-input"
-          placeholder="Type romaji…"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-        />
+        <input type="text" id="answer-input" class="answer-input" placeholder="Type romaji…" autocomplete="off"
+          autocorrect="off" autocapitalize="off" spellcheck="false" />
         <button id="submit-btn" class="primary-btn submit-btn">Check</button>
       </div>
 
-      <!-- SENTENCE mode: multiple choice -->
+      <!-- Sentence mode: multiple choice -->
       <div id="mcq-area" class="mcq-area hidden">
         <p class="mcq-prompt">What does this sentence mean?</p>
         <div id="mcq-choices" class="mcq-choices"></div>
@@ -136,4 +141,5 @@
   <script src="data.js"></script>
   <script src="quiz.js"></script>
 </body>
+
 </html>
